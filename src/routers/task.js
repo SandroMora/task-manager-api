@@ -34,6 +34,9 @@ router.get('/tasks', auth, async (req, res) => {
         sort[parts[0]] = parts[1] === 'desc' ? -1 : 1 
     }
 
+    let date = new Date()
+    date.setDate(date.getDate() + 3 )
+
     try{
         await req.user.populate({
             path: 'tasks',
@@ -43,6 +46,18 @@ router.get('/tasks', auth, async (req, res) => {
                 skip: parseInt(req.query.skip),
                 sort
             }
+        })
+        
+        let nearDue = req.user.tasks.filter(task => {
+           return date  >= new Date(task.dueDate)
+        })
+        nearDue =  nearDue.map(task => {
+            if(new Date() > new Date(task.dueDate)){
+                task['timeLeft'] = "overdue!"
+            }else{
+                task['timeLeft'] = "neardue!"
+            }
+            return task
         })
         res.send(req.user.tasks)
     }   catch(e){
@@ -94,8 +109,7 @@ router.patch('/tasks/:id', auth, async (req, res) => {
 
 router.delete('/tasks/:id', auth, async (req, res) => {
     try{
-        const task = await Task.findOneAndDelete({ _id: req.params._id, owner: req.user._id })
-
+        const task = await Task.findOneAndDelete({ _id: req.params.id, owner: req.user._id })
         if (!task) {
            return res.status(404).send()
         }
